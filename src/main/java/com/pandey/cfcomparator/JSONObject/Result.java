@@ -4,13 +4,13 @@ import java.util.List;
 
 public class Result {
     Contest contest;
-    List<Problem> problem = null;
-    List<Row> row = null;
+    List<Problems> problems = null;
+    List<Rows> rows = null;
 
-    public Result(Contest contest, List<Problem> problem, List<Row> row) {
+    public Result(Contest contest, List<Problems> problems, List<Rows> rows) {
         this.contest = contest;
-        this.problem = problem;
-        this.row = row;
+        this.problems = problems;
+        this.rows = rows;
     }
 
     public Result(){
@@ -25,19 +25,19 @@ public class Result {
         this.contest = contest;
     }
 
-    public List<Problem> getProblem() {
-        return problem;
+    public List<Problems> getProblems() {
+        return problems;
     }
 
-    public void setProblem(List<Problem> problem) {
-        this.problem = problem;
+    public void setProblems(List<Problems> problems) {
+        this.problems = problems;
     }
 
-    public List<Row> getRow() {
-        return row;
+    public List<Rows> getRows() {
+        return rows;
     }
 
-    public void setRow(List<Row> row) {
-        this.row = row;
+    public void setRows(List<Rows> rows) {
+        this.rows = rows;
     }
 }

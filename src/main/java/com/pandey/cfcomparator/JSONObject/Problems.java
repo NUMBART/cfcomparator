@@ -2,24 +2,26 @@ package com.pandey.cfcomparator.JSONObject;
 
 import java.util.List;
 
-public class Problem {
+public class Problems {
     int contestId;
     String index;
     String name;
     String type;
+    int points;
     int rating;
     List<String> tags = null;
 
-    public Problem(int contestId, String index, String name, String type, int rating, List<String> tags) {
+    public Problems(int contestId, String index, String name, String type, int points, int rating, List<String> tags) {
         this.contestId = contestId;
         this.index = index;
         this.name = name;
         this.type = type;
+        this.points = points;
         this.rating = rating;
         this.tags = tags;
     }
 
-    public Problem(){
+    public Problems(){
 
     }
 
@@ -53,6 +55,14 @@ public class Problem {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public int getPoints() {
+        return points;
+    }
+
+    public void setPoints(int points) {
+        this.points = points;
     }
 
     public int getRating() {

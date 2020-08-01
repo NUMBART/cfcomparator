@@ -1,20 +1,21 @@
 package com.pandey.cfcomparator.JSONObject;
 
 public class Members {
-    Member[] member;
+    String handle;
 
-    public Members(Member[] member) {
-        this.member = member;
+    public Members(String handle) {
+        this.handle = handle;
     }
+
     public Members(){
 
     }
 
-    public Member[] getMember() {
-        return member;
+    public String getHandle() {
+        return handle;
     }
 
-    public void setMember(Member[] member) {
-        this.member = member;
+    public void setHandle(String handle) {
+        this.handle = handle;
     }
 }

@@ -2,26 +2,26 @@ package com.pandey.cfcomparator.JSONObject;
 
 import java.util.List;
 
-public class Row {
+public class Rows {
     Party party;
     int rank;
     int points;
     int penalty;
     int successfulHackCount;
     int unsuccessfulHackCount;
-    List<ProblemResult> problemResult = null;
+    List<ProblemResults> problemResults = null;
 
-    public Row(Party party, int rank, int points, int penalty, int successfulHackCount, int unsuccessfulHackCount, List<ProblemResult> problemResult) {
+    public Rows(Party party, int rank, int points, int penalty, int successfulHackCount, int unsuccessfulHackCount, List<ProblemResults> problemResults) {
         this.party = party;
         this.rank = rank;
         this.points = points;
         this.penalty = penalty;
         this.successfulHackCount = successfulHackCount;
         this.unsuccessfulHackCount = unsuccessfulHackCount;
-        this.problemResult = problemResult;
+        this.problemResults = problemResults;
     }
 
-    public Row(){
+    public Rows(){
 
     }
 
@@ -73,11 +73,11 @@ public class Row {
         this.unsuccessfulHackCount = unsuccessfulHackCount;
     }
 
-    public List<ProblemResult> getProblemResult() {
-        return problemResult;
+    public List<ProblemResults> getProblemResults() {
+        return problemResults;
     }
 
-    public void setProblemResult(List<ProblemResult> problemResult) {
-        this.problemResult = problemResult;
+    public void setProblemResults(List<ProblemResults> problemResults) {
+        this.problemResults = problemResults;
     }
 }
