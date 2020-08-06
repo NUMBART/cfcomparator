@@ -46,8 +46,7 @@ public class StandingsController {
             jsonTime.add(i);
             jsonFreq.add(freq.get(i));
         }
-        json.add("bestSubmissionTime" +
-                "Seconds", jsonTime);
+        json.add("bestSubmissionTimeSeconds", jsonTime);
         json.add("countOfUsersWithSameTime", jsonFreq);
         return json.toString();
     }
