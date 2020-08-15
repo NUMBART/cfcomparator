@@ -7,13 +7,22 @@
     <title>Highchart test</title>
 </head>
 <body>
+    <script
+            src="https://code.jquery.com/jquery-3.5.1.js"
+            integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+            crossorigin="anonymous"></script>
+    <script src="js/highcharts.js"></script>
+    <script src="js/TimeVsFreq.js"></script>
+    <script src="js/RankVsTime.js"></script>
+    <script src="https://code.highcharts.com/modules/data.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <h3>Graph of Best Submission Time vs Number of users</h3>
 
-    <div id="container" style="height: 3000px"></div>
+    <div id="container" style="height: 1500px"></div>
 
-    <script src="js/highcharts.js"></script>
-    <script src="js/jquery.js"></script>
-    <script src="js/index.js"></script>
+
 </body>
 </html>
 

@@ -1,4 +1,4 @@
-package com.pandey.cfcomparator.JSONObject;
+package com.pandey.cfcomparator.StandingsObject;
 
 import java.util.List;
 

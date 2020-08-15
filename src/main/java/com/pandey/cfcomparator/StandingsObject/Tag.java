@@ -1,6 +1,4 @@
-package com.pandey.cfcomparator.JSONObject;
-
-import java.util.List;
+package com.pandey.cfcomparator.StandingsObject;
 
 public class Tag {
     String tagname;
