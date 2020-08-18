@@ -16,12 +16,16 @@ public class StandingsController {
         return standingsService.getStandings(contestId);
     }
 
+    //charts are getting diplayed at - http://localhost:8080/
+
+    //need to uncomment the corresponding js file(TimeVsFreq.js) in index.jsp while testing
     @RequestMapping("/problemgraph/timevsfreq")
     @ResponseBody
     public String getProblemTimeVsFreq(@RequestParam("contest") int contestId, @RequestParam("problem") String problemId) {
         return standingsService.getTimevsFreq(contestId, problemId);
     }
 
+    //need to uncomment the corresponding js file(RankVsTime.js) in index.jsp while testing
     @RequestMapping("/problemgraph/rankvstime")
     @ResponseBody
     public String getRankVsTime(@RequestParam("contest") int contestId, @RequestParam("problem") String problemId){
