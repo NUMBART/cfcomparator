@@ -25,15 +25,15 @@ $(document).ready(function() {
                 title: {
                     enabled: true,
                     text: "Best Submission Time of Participant"
+                },
+                labels: {
+                    format: '{value} s'
                 }
             },
             yAxis: {
                 title: {
                     enabled: true,
                     text: "Number Of Users"
-                },
-                labels: {
-                    format: '{value} s'
                 }
             },
             tooltip: {

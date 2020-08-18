@@ -6,13 +6,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.pandey.cfcomparator.RatingChangeObject.RatingChange;
 import com.pandey.cfcomparator.RatingChangeObject.Result;
+import com.pandey.cfcomparator.StandingsObject.Problems;
 import com.pandey.cfcomparator.StandingsObject.Rows;
 import com.pandey.cfcomparator.StandingsObject.Standings;
+import com.pandey.cfcomparator.SubmissionListObject.SubmissionList;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -20,13 +24,17 @@ public class StandingsService {
     private final RestTemplate restTemplate;
     private Standings standings;
     private RatingChange ratingChange;
+    private SubmissionList userSubmissions;
 
     public StandingsService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
         this.standings = null;
         this.ratingChange = null;
+        this.userSubmissions = null;
     }
 
+    //takes mean of standard deviation of data(roughly 70%) for every d
+    //data points in array a maps that to middle value and stores in json
     private String getCleanMeans(ArrayList<Integer> a, int d){
         JsonArray x = new JsonArray();
         JsonArray y = new JsonArray();
@@ -63,6 +71,7 @@ public class StandingsService {
         return json.toString();
     }
 
+    //gets codeforces leaderboard of corresponding contestId
     public Standings getStandings(int contestId){
         if(standings != null)
             return standings;
@@ -75,7 +84,7 @@ public class StandingsService {
             return standings;
         }
     }
-
+    //gets contest ratings of contestants both before and after contest
     public RatingChange getRatingChange(int contestId) {
         if(ratingChange != null)
             return ratingChange;
@@ -89,7 +98,18 @@ public class StandingsService {
         }
     }
 
-    public String getTimevsFreq(int contestId, char problemId){
+    //returns integer index for a problem given problemId
+    private int getProblemIndex(String problemId, List<Problems> problemList){
+        for(int i = 0; i < problemList.size(); ++i){
+            if(problemId.equals(problemList.get(i).getIndex()))
+                return i;
+        }
+        return problemList.size();
+    }
+
+    //Calculates number of contestants to submit a correct answer
+    //at every point of time for a problem in a contest
+    public String getTimevsFreq(int contestId, String problemId){
         //initializing freq
         if(standings == null) this.getStandings(contestId);
         int contestTime = standings.getResult().getContest().getDurationSeconds() + 1;
@@ -98,7 +118,7 @@ public class StandingsService {
 
         //accessing submission time by rank from JavaObject
         List<Rows> rows = standings.getResult().getRows();
-        int pId = Character.getNumericValue(problemId) - Character.getNumericValue('A');
+        int pId = getProblemIndex(problemId, standings.getResult().getProblems());
         for (Rows row : rows) {
             int time = row.getProblemResults().get(pId).getBestSubmissionTimeSeconds();
             if(time != 0) freq.set(time, freq.get(time) + 1);
@@ -106,11 +126,12 @@ public class StandingsService {
         return getCleanMeans(freq, 1);
     }
 
-    public String getRankvsTime(int contestId, char problemId) {
+    //gets average time a contestant at a given rank submits a problem in
+    public String getRankvsTime(int contestId, String problemId) {
         if(standings == null) this.getStandings(contestId);
 
         List<Rows> rows = standings.getResult().getRows();
-        int pId = Character.getNumericValue(problemId) - Character.getNumericValue('A');
+        int pId = getProblemIndex(problemId, standings.getResult().getProblems());
 
         ArrayList<Integer> subtime = new ArrayList<>(rows.size());
         for (Rows row : rows) {
@@ -120,9 +141,10 @@ public class StandingsService {
         return getCleanMeans(subtime, 50);
     }
 
+    //calculates most probable rank for a participant with given rating
+    //in a contest against a list of competing contestants with known ratings
     private double getRank(int rating, List<Result> results) {
         double rank = 1.0;
-        int j = 0;
         for (Result result : results) {
             int opponentRating = result.getOldRating(); //trash value
             double exponent = ((double) (rating - opponentRating))/ 400.0;
@@ -131,11 +153,15 @@ public class StandingsService {
         }
         return rank;
     }
-    public int getProblemRating(int contestId, char problemId) {
+
+    //calculates rating for a particular problem in a contest. Can
+    //find rating for problems in a recent contest whose ratings
+    // have not been updated on site too
+    public int getProblemRating(int contestId, String problemId) {
         if(standings == null) this.getStandings(contestId);
         if(ratingChange == null) this.getRatingChange(contestId);
         if(ratingChange.getStatus().equals("OK") && ratingChange.getResult().size() > 0){
-            int pId = Character.getNumericValue(problemId) - Character.getNumericValue('A');
+            int pId = getProblemIndex(problemId, standings.getResult().getProblems());
             List<Rows> rows = standings.getResult().getRows();
             List<Result> results = ratingChange.getResult();
             int problemRank = 1;
@@ -154,7 +180,10 @@ public class StandingsService {
                     predictedRating = m;
                 }
             }
-            return predictedRating;//to be removed
+            System.out.println(predictedRating);
+            int temp = predictedRating != 800 ? predictedRating+100 : 800;
+            int rounded = (temp/100)*100;
+            return (temp >= (rounded + 50)) ? rounded + 100 : rounded;
         }
         else if(ratingChange.getStatus().equals("OK")){
             //later
@@ -164,5 +193,89 @@ public class StandingsService {
             return 0;
         }
 
+    }
+
+    //fetches all submissions of a user on codeforces
+    private SubmissionList getUserSubmissions(String user){
+        if(userSubmissions != null)
+            return userSubmissions;
+        else {
+            String url = "https://codeforces.com/api/user.status?handle=" + user + "&from=1&count=10000";
+            String temp = this.restTemplate.getForObject(url, String.class);
+            ObjectMapper objectMapper = new ObjectMapper();
+            try { userSubmissions = objectMapper.readValue(temp, SubmissionList.class);}
+            catch (JsonProcessingException e) { e.printStackTrace();}
+            return userSubmissions;
+        }
+    }
+
+    //gets number of problems solved in practice, in virtual round,
+    //in contest(in competition), in contest(out of competition)
+    public String getSolvedByRating(String user) {
+        SubmissionList submissions = getUserSubmissions(user);
+        List<com.pandey.cfcomparator.SubmissionListObject.Result> results = submissions.getResult();
+
+
+        ArrayList<Integer> practiceFreq = new ArrayList<>();
+        ArrayList<Integer> contestFreq = new ArrayList<>();
+        ArrayList<Integer> outofcompFreq = new ArrayList<>();
+        ArrayList<Integer> virtualFreq = new ArrayList<>();
+        ArrayList<String> participationType = new ArrayList<>(Arrays.asList(
+                "CONTESTANT", "PRACTICE", "VIRTUAL", "OUT_OF_COMPETITION"
+        ));
+        ArrayList<ArrayList<Integer>> arrays = new ArrayList<>(Arrays.asList(
+                contestFreq, practiceFreq, virtualFreq, outofcompFreq
+        ));
+        for(int i = 0; i < 36; i++) {
+            for(int j = 0; j < 4; ++j)
+                arrays.get(j).add(0);
+            /*
+            practiceFreq.add(0);
+            contestFreq.add(0);
+            outofcompFreq.add(0);
+            virtualFreq.add(0);
+            */
+        }
+
+        HashSet<String> problemSet = new HashSet<>();
+        for (com.pandey.cfcomparator.SubmissionListObject.Result result : results) {
+            String problemName = result.getProblem().getName();
+            boolean onlyauthor = result.getAuthor().getMembers().size() == 1;
+            String verdict = result.getVerdict();
+            if (onlyauthor && (verdict != null && verdict.equals("OK")) && !problemSet.contains(problemName)) {
+                problemSet.add(problemName);
+                int index = result.getProblem().getRating() / 100;
+                String participantType = result.getAuthor().getParticipantType();
+                ArrayList<Integer> freq;
+                for (int j = 0; j < 4; ++j)
+                    if (participationType.get(j).equals(participantType)){
+                        freq = arrays.get(j);
+                        freq.set(index, freq.get(index) + 1);
+                    }
+            }
+        }
+
+        JsonArray rating = new JsonArray();
+        JsonArray practice = new JsonArray();
+        JsonArray virtual = new JsonArray();
+        JsonArray contest = new JsonArray();
+        JsonArray outofcomp = new JsonArray();
+        JsonObject json = new JsonObject();
+
+        int cnt = 0;
+        for(int i = 8; i < practiceFreq.size(); ++i){
+            rating.add(i*100);
+            practice.add(practiceFreq.get(i));
+            virtual.add(virtualFreq.get(i));
+            contest.add(contestFreq.get(i));
+            outofcomp.add(outofcompFreq.get(i));
+        }
+        System.out.println(cnt);
+        json.add("rating", rating);
+        json.add("practice", practice);
+        json.add("virtual", virtual);
+        json.add("contest", contest);
+        json.add("outofcomp", outofcomp);
+        return json.toString();
     }
 }
