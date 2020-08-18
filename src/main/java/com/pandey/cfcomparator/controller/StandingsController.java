@@ -28,8 +28,8 @@ public class StandingsController {
     //need to uncomment the corresponding js file(RankVsTime.js) in index.jsp while testing
     @RequestMapping("/problemgraph/rankvstime")
     @ResponseBody
-    public String getRankVsTime(@RequestParam("contest") int contestId, @RequestParam("problem") String problemId){
-        return standingsService.getRankvsTime(contestId, problemId);
+    public String getRankVsTime(@RequestParam("contest") int contestId){
+        return standingsService.getRankvsTime(contestId);
     }
 
     @RequestMapping("/predict-problemrating")

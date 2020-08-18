@@ -20,6 +20,13 @@ $(document).ready(function() {
             title: {
                 text: 'Line Chart'
             },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'top',
+                x: -10,
+                y: 100
+            },
             xAxis: {
                 categories: bestSubmissionTimeSeconds,
                 title: {
@@ -43,7 +50,7 @@ $(document).ready(function() {
             },
             series: [{
                 data: countOfUsersWithSameTime
-            }]
+            },]
         });
     }
 });

@@ -25,6 +25,14 @@ public class StandingsService {
     private Standings standings;
     private RatingChange ratingChange;
     private SubmissionList userSubmissions;
+    private class CleanData{
+        public ArrayList<Integer> x;
+        public ArrayList<Double> y;
+        public CleanData(){
+            this.x = new ArrayList<>();
+            this.y = new ArrayList<>();
+        }
+    }
 
     public StandingsService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
@@ -35,10 +43,8 @@ public class StandingsService {
 
     //takes mean of standard deviation of data(roughly 70%) for every d
     //data points in array a maps that to middle value and stores in json
-    private String getCleanMeans(ArrayList<Integer> a, int d){
-        JsonArray x = new JsonArray();
-        JsonArray y = new JsonArray();
-        JsonObject json = new JsonObject();
+    private CleanData getCleanMeans(ArrayList<Integer> a, int d){
+        CleanData cleanData = new CleanData();
 
         for(int i = 0; i < a.size();){
             double mean = 0.0; int dn = 0;
@@ -62,40 +68,35 @@ public class StandingsService {
             }
             avg /= n;
 
-            x.add(i+(dn+1)/2);
-            y.add(avg);
+            cleanData.x.add(i+(dn+1)/2);
+            cleanData.y.add(avg);
             i = i+d;
         }
-        json.add("x", x);
-        json.add("y", y);
-        return json.toString();
+        return cleanData;
     }
 
     //gets codeforces leaderboard of corresponding contestId
     public Standings getStandings(int contestId){
-        if(standings != null)
-            return standings;
-        else {
+        if(standings != null);
+        else{
             String url = "https://codeforces.com/api/contest.standings?contestId=" + contestId + "&from=1&count=50000&showUnofficial=false";
             String temp = this.restTemplate.getForObject(url, String.class);
             ObjectMapper objectMapper = new ObjectMapper();
             try { standings = objectMapper.readValue(temp, Standings.class);}
             catch (JsonProcessingException e) { e.printStackTrace();}
-            return standings;
         }
+        return standings;
     }
     //gets contest ratings of contestants both before and after contest
     public RatingChange getRatingChange(int contestId) {
-        if(ratingChange != null)
-            return ratingChange;
-        else {
+        if(ratingChange == null){
             String url = "https://codeforces.com/api/contest.ratingChanges?contestId=" + contestId;
             String temp = this.restTemplate.getForObject(url, String.class);
             ObjectMapper objectMapper = new ObjectMapper();
             try { ratingChange = objectMapper.readValue(temp, RatingChange.class);}
             catch (JsonProcessingException e) { e.printStackTrace();}
-            return ratingChange;
         }
+        return ratingChange;
     }
 
     //returns integer index for a problem given problemId
@@ -123,22 +124,57 @@ public class StandingsService {
             int time = row.getProblemResults().get(pId).getBestSubmissionTimeSeconds();
             if(time != 0) freq.set(time, freq.get(time) + 1);
         }
-        return getCleanMeans(freq, 1);
+        JsonArray x = new JsonArray();
+        JsonArray y = new JsonArray();
+        JsonObject json = new JsonObject();
+        CleanData cleanData = getCleanMeans(freq, 1);
+        for(int i = 0; i < cleanData.x.size(); ++i){
+            x.add(cleanData.x.get(i));
+            y.add(cleanData.y.get(i));
+        }
+        json.add("x", x);
+        json.add("y", y);
+        return json.toString();
     }
 
     //gets average time a contestant at a given rank submits a problem in
-    public String getRankvsTime(int contestId, String problemId) {
+    public String getRankvsTime(int contestId) {
         if(standings == null) this.getStandings(contestId);
 
         List<Rows> rows = standings.getResult().getRows();
-        int pId = getProblemIndex(problemId, standings.getResult().getProblems());
 
-        ArrayList<Integer> subtime = new ArrayList<>(rows.size());
-        for (Rows row : rows) {
-            int time = row.getProblemResults().get(pId).getBestSubmissionTimeSeconds();
-            subtime.add(time);
+        ArrayList<ArrayList<Integer>> submissionTime = new ArrayList<>();
+        JsonArray problemNames = new JsonArray();
+        for(int i = 0; i < rows.get(0).getProblemResults().size(); ++i) {
+            ArrayList<Integer> temp = new ArrayList<>();
+            String name = standings.getResult().getProblems().get(i).getIndex() + " : " +
+                    standings.getResult().getProblems().get(i).getName();
+            problemNames.add(name);
+            for (Rows row : rows) {
+                int time = row.getProblemResults().get(i).getBestSubmissionTimeSeconds();
+                temp.add(time);
+            }
+            submissionTime.add(temp);
         }
-        return getCleanMeans(subtime, 50);
+        JsonObject json = new JsonObject();
+        JsonArray rank = new JsonArray(); boolean initialized = false;
+        for(int i = 0; i < rows.get(0).getProblemResults().size(); ++i) {
+            CleanData cleanData = getCleanMeans(submissionTime.get(i), 50);
+            if(!initialized){
+                for(int j = 0; j < cleanData.x.size(); ++j)
+                    rank.add(cleanData.x.get(j));
+                json.add("rank", rank);
+                initialized = true;
+            }
+            JsonArray y = new JsonArray();
+            for(int j = 0; j < cleanData.y.size(); ++j)
+                y.add(cleanData.y.get(j));
+            String name = "p" + (i+1);
+            json.add(name, y);
+        }
+        json.add("names", problemNames);
+        return json.toString();
+        
     }
 
     //calculates most probable rank for a participant with given rating
@@ -159,7 +195,7 @@ public class StandingsService {
     // have not been updated on site too
     public int getProblemRating(int contestId, String problemId) {
         if(standings == null) this.getStandings(contestId);
-        if(ratingChange == null) this.getRatingChange(contestId);
+        getRatingChange(contestId);
         if(ratingChange.getStatus().equals("OK") && ratingChange.getResult().size() > 0){
             int pId = getProblemIndex(problemId, standings.getResult().getProblems());
             List<Rows> rows = standings.getResult().getRows();
@@ -197,16 +233,14 @@ public class StandingsService {
 
     //fetches all submissions of a user on codeforces
     private SubmissionList getUserSubmissions(String user){
-        if(userSubmissions != null)
-            return userSubmissions;
-        else {
+        if(userSubmissions == null){
             String url = "https://codeforces.com/api/user.status?handle=" + user + "&from=1&count=10000";
             String temp = this.restTemplate.getForObject(url, String.class);
             ObjectMapper objectMapper = new ObjectMapper();
             try { userSubmissions = objectMapper.readValue(temp, SubmissionList.class);}
             catch (JsonProcessingException e) { e.printStackTrace();}
-            return userSubmissions;
         }
+        return userSubmissions;
     }
 
     //gets number of problems solved in practice, in virtual round,
@@ -214,7 +248,6 @@ public class StandingsService {
     public String getSolvedByRating(String user) {
         SubmissionList submissions = getUserSubmissions(user);
         List<com.pandey.cfcomparator.SubmissionListObject.Result> results = submissions.getResult();
-
 
         ArrayList<Integer> practiceFreq = new ArrayList<>();
         ArrayList<Integer> contestFreq = new ArrayList<>();
@@ -229,12 +262,6 @@ public class StandingsService {
         for(int i = 0; i < 36; i++) {
             for(int j = 0; j < 4; ++j)
                 arrays.get(j).add(0);
-            /*
-            practiceFreq.add(0);
-            contestFreq.add(0);
-            outofcompFreq.add(0);
-            virtualFreq.add(0);
-            */
         }
 
         HashSet<String> problemSet = new HashSet<>();
