@@ -3,6 +3,7 @@ package com.pandey.cfcomparator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.pandey.cfcomparator.RatingChangeObject.RatingChange;
 import com.pandey.cfcomparator.RatingChangeObject.Result;
@@ -14,10 +15,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class StandingsService {
@@ -49,27 +47,49 @@ public class StandingsService {
         for(int i = 0; i < a.size();){
             double mean = 0.0; int dn = 0;
             for(int j = i; j-i < d && j < a.size(); ++j){
-                mean += a.get(j); dn++;
+                if(a.get(j) != 0) {
+                    mean += a.get(j);
+                    dn++;
+                }
             }
-            mean /= dn;
+            mean = dn == 0 ? 0 : mean/dn;
 
             double sd = 0.0; int n = 0;
             for(int j = i; j-i < d && j < a.size(); ++j){
-                sd += (a.get(j) - mean)*(a.get(j) - mean);
-                n++;
+                if(a.get(j) != 0) {
+                    sd += (a.get(j) - mean) * (a.get(j) - mean);
+                    n++;
+                }
             }
-            sd /= n; sd = Math.sqrt(sd);
+            sd = n == 0 ? 0 : sd/n; sd = Math.sqrt(sd);
 
             double avg = 0.0; n = 0;
             for(int j = i; j-i < d && j < a.size(); ++j){
-                if(a.get(j) <= mean+sd){
+                if(a.get(j) <= mean+sd && a.get(j) >= mean-sd && a.get(j) != 0){
                     avg += a.get(j); n++;
                 }
             }
-            avg /= n;
+            avg = n == 0 ? 0 : avg/n ;
+            int sz = cleanData.y.size();
+            double weightedAverage = avg;
+            if(sz > 2) {
+                double last = cleanData.y.get(sz - 1),
+                lastbut1 = cleanData.y.get(sz - 2),
+                lastbut2 = cleanData.y.get(sz - 3);
+                if((last - avg)/avg < 0.4 && (lastbut1 - avg)/avg < 0.4 && (lastbut2 - avg)/avg < 0.4)
+                weightedAverage = (
+                        1.331 * avg +
+                        1.331 * cleanData.y.get(sz - 1) +
+                        1.21 * cleanData.y.get(sz - 2) +
+                        1.1 * cleanData.y.get(sz - 3)
+                );
+                weightedAverage /= (1.331 + 1.331 + 1.21 + 1.1);
+                if(weightedAverage < 1) weightedAverage = 0;
+            }
 
+            if(n < 9) weightedAverage = 0;
             cleanData.x.add(i+(dn+1)/2);
-            cleanData.y.add(avg);
+            cleanData.y.add(weightedAverage);
             i = i+d;
         }
         return cleanData;
@@ -127,37 +147,34 @@ public class StandingsService {
         JsonArray x = new JsonArray();
         JsonArray y = new JsonArray();
         JsonObject json = new JsonObject();
-        CleanData cleanData = getCleanMeans(freq, 1);
-        for(int i = 0; i < cleanData.x.size(); ++i){
-            x.add(cleanData.x.get(i));
-            y.add(cleanData.y.get(i));
+        for(int i = 1; i < freq.size(); ++i){
+            x.add(i);
+            y.add(freq.get(i));
         }
         json.add("x", x);
         json.add("y", y);
         return json.toString();
     }
 
-    //gets average time a contestant at a given rank submits a problem in
+    //gets average time, a contestant at a given rank, submits a problem in
     public String getRankvsTime(int contestId) {
         if(standings == null) this.getStandings(contestId);
 
         List<Rows> rows = standings.getResult().getRows();
-
         ArrayList<ArrayList<Integer>> submissionTime = new ArrayList<>();
-        JsonArray problemNames = new JsonArray();
+
         for(int i = 0; i < rows.get(0).getProblemResults().size(); ++i) {
             ArrayList<Integer> temp = new ArrayList<>();
-            String name = standings.getResult().getProblems().get(i).getIndex() + " : " +
-                    standings.getResult().getProblems().get(i).getName();
-            problemNames.add(name);
             for (Rows row : rows) {
                 int time = row.getProblemResults().get(i).getBestSubmissionTimeSeconds();
                 temp.add(time);
             }
             submissionTime.add(temp);
         }
+
         JsonObject json = new JsonObject();
         JsonArray rank = new JsonArray(); boolean initialized = false;
+        JsonArray seriesData = new JsonArray();
         for(int i = 0; i < rows.get(0).getProblemResults().size(); ++i) {
             CleanData cleanData = getCleanMeans(submissionTime.get(i), 50);
             if(!initialized){
@@ -169,10 +186,15 @@ public class StandingsService {
             JsonArray y = new JsonArray();
             for(int j = 0; j < cleanData.y.size(); ++j)
                 y.add(cleanData.y.get(j));
-            String name = "p" + (i+1);
-            json.add(name, y);
+
+            String name = standings.getResult().getProblems().get(i).getIndex() + " : " +
+                    standings.getResult().getProblems().get(i).getName();
+            JsonObject temp = new JsonObject();
+            temp.addProperty("name", name);
+            temp.add("data", y);
+            seriesData.add(temp);
         }
-        json.add("names", problemNames);
+        json.add("seriesData", seriesData);
         return json.toString();
         
     }
